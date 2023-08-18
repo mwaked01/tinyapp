@@ -46,9 +46,11 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
-app.post("/urls", (req, res) => {
-  console.log(req.body);
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+app.post("/urls/", (req, res) => {
+  const templateVars = {id : generateRandomString(), longURL: req.body.longURL}
+  urlDatabase[templateVars.id] = req.body.longURL;
+  console.log(urlDatabase);
+  res.render("urls_show", templateVars); // Respond with 'Ok' (we will replace this)
 });
 
 app.listen(PORT, () => {
