@@ -11,14 +11,14 @@ const urlDatabase = {
 
 app.use(express.urlencoded({ extended: true }));
 
-const generateRandomString = function (){
+const generateRandomString = function() {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
-  for (i = 0; i < 6; i++){
+  for (let i = 0; i < 6; i++) {
     result += chars[Math.floor(Math.random() * chars.length)];
   }
   return result;
-}
+};
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -49,11 +49,11 @@ app.get("/urls/:id", (req, res) => {
 app.post("/urls", (req, res) => {
   let id = generateRandomString();
   urlDatabase[id] = req.body.longURL;
-  res.redirect(`/urls/${id}`); 
+  res.redirect(`/urls/${id}`);
 });
 
 app.get("/u/:id", (req, res) => {
-   const longURL = urlDatabase[req.params.id];
+  const longURL = urlDatabase[req.params.id];
   res.redirect(longURL);
 });
 
