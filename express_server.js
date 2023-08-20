@@ -28,6 +28,10 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase};
   res.render('urls_index', templateVars);
@@ -42,15 +46,15 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
+app.post("/urls", (req, res) => {
+  let id = generateRandomString();
+  urlDatabase[id] = req.body.longURL;
+  res.redirect(`/urls/${id}`); 
 });
 
-app.post("/urls/", (req, res) => {
-  const templateVars = {id : generateRandomString(), longURL: req.body.longURL}
-  urlDatabase[templateVars.id] = req.body.longURL;
-  console.log(urlDatabase);
-  res.render("urls_show", templateVars); // Respond with 'Ok' (we will replace this)
+app.get("/u/:id", (req, res) => {
+   const longURL = urlDatabase[req.params.id];
+  res.redirect(longURL);
 });
 
 app.listen(PORT, () => {
