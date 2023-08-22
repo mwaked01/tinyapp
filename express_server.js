@@ -95,13 +95,26 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  //res.cookie(`username`,req.body.username);
-  res.redirect(`/urls`);
+  const emailCheck = userLookup(req.body.email);
+  if (emailCheck) {
+    if (emailCheck.password === req.body.password) {
+      res.cookie(`user_id`, emailCheck.id);
+      res.redirect('/urls');
+    } else {
+      //console.log ("Wrong Password");
+      res.status(403);
+      res.sendStatus(403);
+    }
+  } else {
+    //console.log ("Wrong Email");
+    res.status(403);
+    res.sendStatus(403);
+  }
 });
 
 app.post("/logout", (req, res) => {
   res.clearCookie('user_id');
-  res.redirect(`/urls`);
+  res.redirect(`/login`);
 });
 
 app.get("/register", (req, res) => {

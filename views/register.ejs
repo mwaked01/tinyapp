@@ -22,23 +22,23 @@
     <%- include('partials/_header') %>
 
     <main style="margin: 1em;">
-      <h3>Register</h3>
+      <h3>Create Account</h3>
       <form class="form-inline" action="/register" method="POST">
         <div class="form-group mb-2">
-          <label>Enter an Email:</label>
+          <label>Email Address:</label>
           <input
             class="form-control"
             type="email"
             name="email"
-            placeholder="Email"
+            placeholder="Enter Email"
             style="width: 300px; margin: 1em"
           />
-          <label >Enter a Password:</label>
+          <label >Password:</label>
           <input
             class="form-control"
             type="password"
             name="password"
-            placeholder="Password"
+            placeholder="Enter Password"
             style="width: 300px; margin: 1em"
           />
           <button type="submit" class="btn btn-primary">Submit</button>
