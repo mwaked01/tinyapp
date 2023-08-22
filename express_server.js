@@ -4,7 +4,8 @@ const app = express();
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
-
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -24,16 +25,22 @@ const users = {
   },
 };
 
-app.use(express.urlencoded({ extended: true }));
-app.use (cookieParser());
-
-const generateRandomString = function() {
+const generateRandomString = function () {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   for (let i = 0; i < 6; i++) {
     result += chars[Math.floor(Math.random() * chars.length)];
   }
   return result;
+};
+
+const userLookup = function (email) {
+  for (let id in users) {
+    if (users[id].email === email) {
+      return users[id];
+    }
+  }
+  return null;
 };
 
 app.get("/", (req, res) => {
@@ -49,20 +56,20 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { 
-    user: users[req.cookies.user_id], 
+  const templateVars = {
+    user: users[req.cookies.user_id],
     urls: urlDatabase
   };
   res.render('urls_index', templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id]};
-  res.render("urls_new",templateVars);
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id], id: req.params.id, longURL:  urlDatabase[req.params.id]};
+  const templateVars = { user: users[req.cookies.user_id], id: req.params.id, longURL: urlDatabase[req.params.id] };
   res.render("urls_show", templateVars);
 });
 
@@ -98,15 +105,23 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id]};
-  res.render('register',templateVars);
+  const templateVars = { user: users[req.cookies.user_id] };
+  res.render('register', templateVars);
 });
 
 app.post("/register", (req, res) => {
-  let userId = generateRandomString();
-  users[userId] = {id: userId, email: req.body.email, password: req.body.password};
-  res.cookie(`user_id`,userId);
-  res.redirect('/urls');
+  if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
+    res.status(400);
+    res.sendStatus (400);
+  } else if (userLookup(req.body.email) === null) {
+    let userId = generateRandomString();
+    users[userId] = { id: userId, email: req.body.email, password: req.body.password };
+    res.cookie(`user_id`, userId);
+    res.redirect('/urls');
+  } else {
+    res.status(400);
+    res.sendStatus(400);
+  }
 });
 
 app.listen(PORT, () => {
