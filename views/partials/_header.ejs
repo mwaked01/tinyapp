@@ -24,16 +24,19 @@
       </form>
       
     <%}else {%>
-    <form class="" action="/login" method="POST">
-      <div class="form-group mb-1">
+    <form class="" action="/login" method="GET">
+      <!-- <div class="form-group mb-1">
         <input 
           type="text"
           name="username"
           placeholder="Username"
           style="width: 150px; margin: 1em"
-        />
+        /> -->
         <button type="submit" class="btn btn-success">Login</button>
-      </div>
+      <!-- </div> -->
+    </form> 
+    <form class="" action="/register" method="GET">
+        <button type="submit" class="btn btn-success">Register</button>
     </form> 
     <%}%>
   </nav>
