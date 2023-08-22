@@ -19,11 +19,12 @@
       </div>
     </div>
     <%if (user) {%>
+      <!-- when the user_id cookie has a truthy value, the user is logged in -->
       <form class="" action="/logout" method="POST">
         Logged in as: <%=user.email%><button type="submit" class="btn btn-success">Logout</button>
       </form>
-      
     <%}else {%>
+      <!-- when the user_id cookie is not undefined, user is not logged in -->
     <form class="" action="/login" method="GET">
         <button type="submit" class="btn btn-success">Login</button>
     </form> 

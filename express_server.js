@@ -1,5 +1,5 @@
 const express = require("express");
-var cookieParser = require('cookie-parser')
+let cookieParser = require('cookie-parser');
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -12,6 +12,7 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+//Data base that contains registered user info.
 const users = {
   user1: {
     id: "user1",
@@ -25,7 +26,7 @@ const users = {
   },
 };
 
-const generateRandomString = function () {
+const generateRandomString = function() {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   for (let i = 0; i < 6; i++) {
@@ -34,8 +35,9 @@ const generateRandomString = function () {
   return result;
 };
 
-const userLookup = function (email) {
+const userLookup = function(email) {
   for (let id in users) {
+    //check if given email exists in the users database
     if (users[id].email === email) {
       return users[id];
     }
@@ -44,17 +46,19 @@ const userLookup = function (email) {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  //whenever the the user_id cookie is not empty, a user is logged in
+  if (req.cookies.user_id) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-
+//logic to check if user is logged in is in urls_index.ejs
 app.get("/urls", (req, res) => {
   const templateVars = {
     user: users[req.cookies.user_id],
@@ -65,7 +69,11 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   const templateVars = { user: users[req.cookies.user_id] };
-  res.render("urls_new", templateVars);
+  if (req.cookies.user_id) {
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.get("/urls/:id", (req, res) => {
@@ -81,10 +89,12 @@ app.post("/urls", (req, res) => {
 
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id];
+  //Redirects to teh actual website that the short url represents
   res.redirect(longURL);
 });
 
 app.post("/urls/:id/delete", (req, res) => {
+  //remove specified content from URL Database when delete is clicked
   delete urlDatabase[req.params.id];
   res.redirect(`/urls`);
 });
@@ -96,17 +106,19 @@ app.post("/urls/:id", (req, res) => {
 
 app.post("/login", (req, res) => {
   const emailCheck = userLookup(req.body.email);
+  //When email is not found in userLookup, emailCheck will have a null value
   if (emailCheck) {
+    //Email is found in user database
     if (emailCheck.password === req.body.password) {
       res.cookie(`user_id`, emailCheck.id);
       res.redirect('/urls');
     } else {
-      //console.log ("Wrong Password");
+      //Email is in user database but the Password doesnt match up
       res.status(403);
       res.sendStatus(403);
     }
   } else {
-    //console.log ("Wrong Email");
+    //Email is not found in user Database
     res.status(403);
     res.sendStatus(403);
   }
@@ -124,14 +136,17 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
+    //Email and Password have empty inputs or blank spaces
     res.status(400);
-    res.sendStatus (400);
+    res.sendStatus(400);
   } else if (userLookup(req.body.email) === null) {
+    //Email is valid and doesn't already exist in database
     let userId = generateRandomString();
     users[userId] = { id: userId, email: req.body.email, password: req.body.password };
     res.cookie(`user_id`, userId);
     res.redirect('/urls');
   } else {
+    //Email already exists in database
     res.status(400);
     res.sendStatus(400);
   }
