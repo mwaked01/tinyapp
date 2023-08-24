@@ -26,7 +26,7 @@ const users = {
   },
 };
 
-const generateRandomString = function() {
+const generateRandomString = function () {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   for (let i = 0; i < 6; i++) {
@@ -35,7 +35,7 @@ const generateRandomString = function() {
   return result;
 };
 
-const userLookup = function(email) {
+const userLookup = function (email) {
   for (let id in users) {
     //check if given email exists in the users database
     if (users[id].email === email) {
@@ -46,7 +46,7 @@ const userLookup = function(email) {
 };
 
 app.get("/", (req, res) => {
-  //whenever the the user_id cookie is not empty, a user is logged in
+  //whenever the user_id cookie is not empty, a user is logged in
   if (req.cookies.user_id) {
     res.redirect("/urls");
   } else {
@@ -131,13 +131,16 @@ app.post("/logout", (req, res) => {
 
 app.get("/register", (req, res) => {
   const templateVars = { user: users[req.cookies.user_id] };
-  res.render('register', templateVars);
+  if (req.cookies.user_id) {
+    res.redirect(`/urls`);
+  } else {
+    res.render('register', templateVars);
+  }
 });
 
 app.post("/register", (req, res) => {
   if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
     //Email and Password have empty inputs or blank spaces
-    res.status(400);
     res.sendStatus(400);
   } else if (userLookup(req.body.email) === null) {
     //Email is valid and doesn't already exist in database
@@ -147,14 +150,17 @@ app.post("/register", (req, res) => {
     res.redirect('/urls');
   } else {
     //Email already exists in database
-    res.status(400);
     res.sendStatus(400);
   }
 });
 
 app.get("/login", (req, res) => {
   const templateVars = { user: users[req.cookies.user_id] };
-  res.render('login', templateVars);
+  if (req.cookies.user_id) {
+    res.redirect(`/urls`);
+  } else {
+    res.render('login', templateVars);
+  }
 });
 
 app.listen(PORT, () => {
