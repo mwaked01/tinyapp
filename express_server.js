@@ -56,11 +56,11 @@ const generateRandomString = function() {
   return result;
 };
 
-const userLookup = function(email) {
-  for (let id in users) {
+const userLookup = function(email, database) {
+  for (let id in database) {
     //check if given email exists in the users database
-    if (users[id].email === email) {
-      return users[id];
+    if (database[id].email === email) {
+      return database[id];
     }
   }
   return null;
@@ -167,7 +167,7 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const user = userLookup(req.body.email);
+  const user = userLookup(req.body.email, users);
   //When email is not found in userLookup, user will have a null value
   if (user) {
     //Email is found in user database
@@ -201,7 +201,7 @@ app.get("/register", (req, res) => {
 app.post("/register", (req, res) => {
   if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
     res.status(400).send('Email and Password cannot contain empty spaces.');
-  } else if (userLookup(req.body.email) === null) {
+  } else if (userLookup(req.body.email, users) === null) {
     //Email is valid and doesn't already exist in database
     let userId = generateRandomString();
     const password = req.body.password;
