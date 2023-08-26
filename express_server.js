@@ -1,5 +1,5 @@
 const express = require("express");
-let cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
 
 const app = express();
@@ -7,7 +7,10 @@ const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'user_id',
+  keys:  ['key1', 'key2']
+}));
 
 const urlDatabase = {
   b6UTxQ: {
@@ -20,7 +23,7 @@ const urlDatabase = {
   },
 };
 
-const urlsForUser = function (id) {
+const urlsForUser = function(id) {
   let validURLs = {};
   for (let data in urlDatabase) {
     if (urlDatabase[data].userID === id) {
@@ -28,23 +31,23 @@ const urlsForUser = function (id) {
     }
   }
   return validURLs;
-}
+};
 
 //Data base that contains registered user info.
 const users = {
   user1: {
     id: "user1",
     email: "user1@example.com",
-    password: "new",
+    password: bcrypt.hashSync('new', 10)
   },
   user2: {
     id: "user2",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: bcrypt.hashSync('pass', 10),
   },
 };
 
-const generateRandomString = function () {
+const generateRandomString = function() {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   for (let i = 0; i < 6; i++) {
@@ -53,7 +56,7 @@ const generateRandomString = function () {
   return result;
 };
 
-const userLookup = function (email) {
+const userLookup = function(email) {
   for (let id in users) {
     //check if given email exists in the users database
     if (users[id].email === email) {
@@ -65,7 +68,7 @@ const userLookup = function (email) {
 
 app.get("/", (req, res) => {
   //whenever the user_id cookie is not empty, a user is logged in
-  if (req.cookies.user_id) {
+  if (req.session.user_id) {
     res.redirect("/urls");
   } else {
     res.redirect("/login");
@@ -77,23 +80,21 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  //in the case that there is a cookie on the website but it doesnt match the database
-  if (!users[req.cookies.user_id]) {
-    res.clearCookie('user_id');
+  //whenever there is a cookie on the client that doesnt match database. clear the cookie
+  if (req.session.user_id && !users[req.session.user_id]) {
+    req.session.user_id = null;
   }
-
-  const filteredURL = urlsForUser(req.cookies.user_id);
-
+  const filteredURL = urlsForUser(req.session.user_id);
   const templateVars = {
-    user: users[req.cookies.user_id],
+    user: users[req.session.user_id],
     urls: filteredURL
   };
   res.render('urls_index', templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies.user_id] };
-  if (req.cookies.user_id) {
+  const templateVars = { user: users[req.session.user_id] };
+  if (req.session.user_id) {
     res.render("urls_new", templateVars);
   } else {
     res.redirect("/login");
@@ -101,8 +102,8 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  if (urlDatabase[req.params.id].userID === req.cookies.user_id) {
-    const templateVars = { user: users[req.cookies.user_id], id: req.params.id, longURL: urlDatabase[req.params.id]['longURL'] };
+  if (urlDatabase[req.params.id].userID === req.session.user_id) {
+    const templateVars = { user: users[req.session.user_id], id: req.params.id, longURL: urlDatabase[req.params.id]['longURL'] };
     res.render("urls_show", templateVars);
   } else {
     res.send("Please login first!");
@@ -110,9 +111,9 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  if (req.cookies.user_id) {
+  if (req.session.user_id) {
     let id = generateRandomString();
-    urlDatabase[id] = { longURL: req.body.longURL, userID: req.cookies.user_id };
+    urlDatabase[id] = { longURL: req.body.longURL, userID: req.session.user_id };
     res.redirect(`/urls/${id}`);
   } else {
     res.send("Please login first!");
@@ -132,8 +133,8 @@ app.get("/u/:id", (req, res) => {
 app.post("/urls/:id/delete", (req, res) => {
   //remove specified content from URL Database when delete is clicked
   if (urlDatabase[req.params.id]) {
-    if (req.cookies.user_id) {
-      if (urlDatabase[req.params.id].userID === req.cookies.user_id) {
+    if (req.session.user_id) {
+      if (urlDatabase[req.params.id].userID === req.session.user_id) {
         delete urlDatabase[req.params.id];
         res.redirect(`/urls`);
       } else {
@@ -149,8 +150,8 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   if (urlDatabase[req.params.id]) {
-    if (req.cookies.user_id) {
-      if (urlDatabase[req.params.id].userID === req.cookies.user_id) {
+    if (req.session.user_id) {
+      if (urlDatabase[req.params.id].userID === req.session.user_id) {
         urlDatabase[req.params.id]['longURL'] = req.body.longURL;
         res.redirect(`/urls`);
       } else {
@@ -166,31 +167,31 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const emailCheck = userLookup(req.body.email);
-  //When email is not found in userLookup, emailCheck will have a null value
-  if (emailCheck) {
+  const user = userLookup(req.body.email);
+  //When email is not found in userLookup, user will have a null value
+  if (user) {
     //Email is found in user database
-    if (bcrypt.compareSync(req.body.password, emailCheck.password)){
-      res.cookie(`user_id`, emailCheck.id);
+    if (bcrypt.compareSync(req.body.password, user.password)) {
+      req.session.user_id = user.id;
       res.redirect('/urls');
     } else {
       //Email is in user database but the Password doesnt match up
-      res.status(403).send('Invalid credentials!');
+      res.status(403).send('Invalid credentials.');
     }
   } else {
     //Email is not found in user Database
-    res.status(403).send('Invalid credentials!');
+    res.status(403).send('Invalid credentials.');
   }
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   res.redirect(`/login`);
 });
 
 app.get("/register", (req, res) => {
-  if (!req.cookies.user_id) {
-    const templateVars = { user: users[req.cookies.user_id] };
+  if (!req.session.user_id) {
+    const templateVars = { user: users[req.session.user_id] };
     res.render('register', templateVars);
   } else {
     res.redirect('/urls');
@@ -206,7 +207,7 @@ app.post("/register", (req, res) => {
     const password = req.body.password;
     const hashedPassword = bcrypt.hashSync(password, 10);
     users[userId] = { id: userId, email: req.body.email, password: hashedPassword};
-    res.cookie(`user_id`, userId);
+    req.session.user_id = userId;
     res.redirect('/urls');
   } else {
     res.status(400).send('An account already exists with this email.');
@@ -214,8 +215,8 @@ app.post("/register", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  if (!req.cookies.user_id) {
-    const templateVars = { user: users[req.cookies.user_id] };
+  if (!req.session.user_id) {
+    const templateVars = { user: users[req.session.user_id] };
     res.render('login', templateVars);
   } else {
     res.redirect('/urls');
@@ -223,5 +224,5 @@ app.get("/login", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
+  console.log(`TinyApp listening on port ${PORT}!`);
 });
