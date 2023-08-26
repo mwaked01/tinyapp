@@ -1,5 +1,7 @@
 const express = require("express");
 let cookieParser = require('cookie-parser');
+const bcrypt = require("bcryptjs");
+
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -168,7 +170,7 @@ app.post("/login", (req, res) => {
   //When email is not found in userLookup, emailCheck will have a null value
   if (emailCheck) {
     //Email is found in user database
-    if (emailCheck.password === req.body.password) {
+    if (bcrypt.compareSync(req.body.password, emailCheck.password)){
       res.cookie(`user_id`, emailCheck.id);
       res.redirect('/urls');
     } else {
@@ -197,16 +199,16 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
-    //Email and Password have empty inputs or blank spaces
     res.status(400).send('Email and Password cannot contain empty spaces.');
   } else if (userLookup(req.body.email) === null) {
     //Email is valid and doesn't already exist in database
     let userId = generateRandomString();
-    users[userId] = { id: userId, email: req.body.email, password: req.body.password };
+    const password = req.body.password;
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    users[userId] = { id: userId, email: req.body.email, password: hashedPassword};
     res.cookie(`user_id`, userId);
     res.redirect('/urls');
   } else {
-    //Email already exists in database
     res.status(400).send('An account already exists with this email.');
   }
 });
