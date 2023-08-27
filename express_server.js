@@ -1,6 +1,7 @@
 const express = require("express");
 const cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
+const userLookup = require("./helpers");
 
 const app = express();
 const PORT = 8080; // default port 8080
@@ -9,7 +10,7 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieSession({
   name: 'user_id',
-  keys:  ['key1', 'key2']
+  keys: ['key1', 'key2']
 }));
 
 const urlDatabase = {
@@ -56,15 +57,7 @@ const generateRandomString = function() {
   return result;
 };
 
-const userLookup = function(email, database) {
-  for (let id in database) {
-    //check if given email exists in the users database
-    if (database[id].email === email) {
-      return database[id];
-    }
-  }
-  return null;
-};
+
 
 app.get("/", (req, res) => {
   //whenever the user_id cookie is not empty, a user is logged in
@@ -84,6 +77,7 @@ app.get("/urls", (req, res) => {
   if (req.session.user_id && !users[req.session.user_id]) {
     req.session.user_id = null;
   }
+
   const filteredURL = urlsForUser(req.session.user_id);
   const templateVars = {
     user: users[req.session.user_id],
@@ -102,11 +96,15 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  if (urlDatabase[req.params.id].userID === req.session.user_id) {
+  if (!urlDatabase[req.params.id]) {
+    res.send("URL does not exist");
+  } else if (!req.session.user_id) {
+    res.send("Please login first!");
+  } else if (urlDatabase[req.params.id].userID === req.session.user_id) {
     const templateVars = { user: users[req.session.user_id], id: req.params.id, longURL: urlDatabase[req.params.id]['longURL'] };
     res.render("urls_show", templateVars);
   } else {
-    res.send("Please login first!");
+    res.send("This URL is not available on this account.");
   }
 });
 
@@ -166,6 +164,24 @@ app.post("/urls/:id", (req, res) => {
   }
 });
 
+app.get("/login", (req, res) => {
+  if (!req.session.user_id) {
+    const templateVars = { user: users[req.session.user_id] };
+    res.render('login', templateVars);
+  } else {
+    res.redirect('/urls');
+  }
+});
+
+app.get("/register", (req, res) => {
+  if (!req.session.user_id) {
+    const templateVars = { user: users[req.session.user_id] };
+    res.render('register', templateVars);
+  } else {
+    res.redirect('/urls');
+  }
+});
+
 app.post("/login", (req, res) => {
   const user = userLookup(req.body.email, users);
   //When email is not found in userLookup, user will have a null value
@@ -184,20 +200,6 @@ app.post("/login", (req, res) => {
   }
 });
 
-app.post("/logout", (req, res) => {
-  req.session = null;
-  res.redirect(`/login`);
-});
-
-app.get("/register", (req, res) => {
-  if (!req.session.user_id) {
-    const templateVars = { user: users[req.session.user_id] };
-    res.render('register', templateVars);
-  } else {
-    res.redirect('/urls');
-  }
-});
-
 app.post("/register", (req, res) => {
   if (req.body.email.trim().length === 0 || req.body.password.trim().length === 0) {
     res.status(400).send('Email and Password cannot contain empty spaces.');
@@ -206,7 +208,7 @@ app.post("/register", (req, res) => {
     let userId = generateRandomString();
     const password = req.body.password;
     const hashedPassword = bcrypt.hashSync(password, 10);
-    users[userId] = { id: userId, email: req.body.email, password: hashedPassword};
+    users[userId] = { id: userId, email: req.body.email, password: hashedPassword };
     req.session.user_id = userId;
     res.redirect('/urls');
   } else {
@@ -214,13 +216,10 @@ app.post("/register", (req, res) => {
   }
 });
 
-app.get("/login", (req, res) => {
-  if (!req.session.user_id) {
-    const templateVars = { user: users[req.session.user_id] };
-    res.render('login', templateVars);
-  } else {
-    res.redirect('/urls');
-  }
+app.post("/logout", (req, res) => {
+  //deletes cookie
+  req.session = null;
+  res.redirect(`/login`);
 });
 
 app.listen(PORT, () => {
